@@ -1,1 +1,25 @@
-# cora
+Copyright (c) 2015-2016 Deniz Yorukoglu. All rights reserved.
+
+This package implements the CORA algorithm described in:
+Deniz Yorukoglu, Y. William Yu, Jian Peng, Bonnie Berger. 
+"Compressive Mapping for Next-Generation Sequencing" 
+(In Press).
+
+http://cora.csail.mit.edu/
+
+-----------------------------
+
+Package contents:
+
+*	Source code for CORA framework (excluding coarse mapper to be plugged in, a mapper of choice should be downloaded separately for coarse mapping)
+*	Internal data files (.dat)
+*	Makefile
+*	Manual
+*	License
+
+-----------------------------
+
+	
+
+
+
