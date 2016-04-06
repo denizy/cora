@@ -1,117 +1,144 @@
-======================================================================================
-=== CORA v1.1.0b by Deniz Yorukoglu (denizy@mit.edu, http://www.mit.edu/~denizy/) ====
-======================================================================================
+====================================================================================================
+=======   CORA v1.1.2b by Deniz Yorukoglu (denizy@mit.edu, http://cora.csail.mit.edu/)      ========
+====================================================================================================
+
 Usage: cora <command> [options]
 
-Command: coraIndex	 Create a homology table for CoRA.
+Command: coraIndex	 Create a homology table for CORA.
+         faiGenerate	 Generate .fai file for reference.
          mapperIndex	 Index the reference genome for coarse mapper.
-         readFileGen	 Automatically generate CoRA's read file list input.
-         search		 Run CoRA's compressive read alignment pipeline.
+         readFileGen	 Automatically generate CORA's read file list input.
+         search		 Run CORA's compressive read alignment pipeline.
+
+To print the manual for each command, run './cora <command>' without any options.
 
 
-
-======================================================================================
+====================================================================================================
 Usage: cora coraIndex [options] <Reference> <ExactHom> <InexactHom>
-======================================================================================
-Notes: Reference should be in fasta or multi-fasta format and indexed using samtools faidx
-       ExactHom and InexactHom are arbitrary file names to be used in the search pipeline of CoRA
+====================================================================================================
+Notes: Reference should be in fasta or multi-fasta format and indexed
+       You can use 'cora faiGenerate' or 'samtools faidx' to index the reference
+       ExactHom and InexactHom are file names to be used in the search pipeline of CORA
 
-Important Options   : -K [INT]       k-mer length [no default]
-                    : -H [INT] Hamming-distance threshold per k-mer for inexact homology table. (1 to 3) [default 2] 
+Important Options: 
 
-Performance Options : -p [INT] Number of physical file splits for computing the homology tables (1 to 10) [default 10]
-                               Higher values substantially reduce memory use, sacrificing some run time.
-                      -t [INT] Number of parallel threads to use for computing the inexact homology table (1 to 24) [default 8]
+    -K     [INT 33-64] k-mer length [no default]
+    -H     [INT 1-3]   Hamming-distance threshold per k-mer for inexact homology table. [2] 
+
+Performance Options: 
+
+    -p     [INT 1-10]  Number of physical file splits for computing the homology tables [10]
+                       Higher values substantially reduce memory use, sacrificing some run time.
+    -t     [INT 1-24]  Number of parallel threads to use for computing the inexact homology table [8]
 
 
-======================================================================================
+====================================================================================================
+Usage: cora faiGenerate <Reference>
+====================================================================================================
+
+Notes: This command is a replacement for 'samtools faidx' in case samtools is not installed
+       Reference should be in fasta or multi-fasta format
+
+
+====================================================================================================
 Usage: cora mapperIndex [options] <Reference>
-======================================================================================
+====================================================================================================
 
-Notes: Reference should be in fasta or multi-fasta format and indexed using samtools faidx
+Important Options: 
 
-Important Options   : --Map    off-the shelf mapper to be used for coarse mapping (used in stage 2 and 3) [default BWA]
-                               current valid options: BWA, BWA_MEM, BOWTIE, BOWTIE_2, MRSFAST, MRSFAST_ULTRA
-                    : --Exec   name of the executable file if not installed or installed by name different than the default [default bwa]
-                               Either full path (e.g. /home/bwa_folder/bwa) or just executable name if installed (e.g. bwa)
-                    : --Index  full path for the index to be constructed if [default is same as <Reference>]
+    --Map        Off-the shelf mapper to be used for coarse mapping (stages 2-3) [default BWA]
+                 current valid options: BWA, BWA_MEM, BOWTIE, BOWTIE_2, MRSFAST, MRSFAST_ULTRA
+    --Exec       Name of the executable path for mapper [default bwa]
+                 Can be full path (e.g. /home/folder/bwa) or just executable if installed (e.g. bwa)
+    --Index      Full path for the index to be constructed if [default is same as <Reference>]
 
-Performance Options : --opt    Additional options to be passed to the mapper for indexing
-                               Warning: some of the non-default indexing options may not be compatible with CoRA
+Miscellaneous Options: 
+
+    --opt        Additional options to be passed to the mapper for indexing
+                 Warning: some of the non-default indexing options may not be compatible with CORA
 
 
-======================================================================================
-Usage: To generate single-end read file list: 
-          cora readFileGen [options] <FileListName> -S <FASTQ-A> <FASTQ-B> <...>
-       To generate paired-end read file list: 
-          cora readFileGen [options] <FileListName>  -P <FASTQ-A-first> <FASTQ-A-second> <FASTQ-B-first> <FASTQ-B-second> <...>
-======================================================================================
+====================================================================================================
+Usage: To generate SINGLE-end read file list: 
 
-Notes: <FileListName> is the output file list for CoRA
-       FASTQ files are input read datasets. In the current version paired and single-end read datasets cannot be mixed
-       This restriction will be lifted in future updates
+        cora readFileGen [option] <FileName> -S <FASTQ-A> <FASTQ-B> <...>
+
+       To generate PAIRED-end read file list: 
+
+        cora readFileGen [option] <FileName> -P <FASTQ-A1> <FASTQ-A2> <FASTQ-B1> <FASTQ-B2> <...>
+
+====================================================================================================
+
+Notes: <FileName> is the output read file list name for CORA, which stores read dataset info
+       FASTQ files are input read datasets. Paired and single-end read datasets cannot be mixed
 
 Options   : --ReadComp  [STRING] Compression format of the input reads (GZIP or OFF) [default OFF]
-                                 OFF means that the input datasets are in plain FASTQ format
+                                     OFF  -> input datasets are in plain FASTQ format
+                                     GZIP -> input datasets are compressed with gzip
 
 
-
-======================================================================================
+====================================================================================================
 Usage: cora search[options] <Read_File_List> <Reference> <ExactHom> <InexactHom>
-======================================================================================
+====================================================================================================
 
-Notes: <Reference> should be in fasta or multi-fasta format and indexed using samtools faidx
+Notes: <Reference> should be in fasta or multi-fasta format and indexed.
        <ExactHom> and <InexactHom> are files generated in the coraIndex run
-       <Read_File_List> can be generated using readFileGen command or manually (see README)
+       <Read_File_List> can be generated using readFileGen command or manually.
 
-Important Options   : -C          Determines which stages of CORA's compressive search pipeline will be executed. [default 1111]
-                                  Other valid options are: 1000, 1100, 1110, 0100, 0110, 0111, 0010, 0011, 0001
-                                  These indicate 4 flags for running following 4 stages: 
-                                  1) Compressing reads into unique k-mers.
-                                  2) Coarse mapping k-mers to the reference using an off-the-shelf aligner.
-                                  3) Converting coarse mapping results to read links.
-                                  4) Traverse links and homology tables simultaneously for generating final mappings.
-                    : --Mode      Mapping report mode: ALL, BEST, BEST_SENSITIVE, BEST_FAST, STRATUM, or UNIQUE [default ALL].
-                    : --Map       Off-the shelf mapper to be used for coarse mapping (used in stage 2 and 3) [default BWA]
-                                  Current valid options: BWA, BWA_MEM, BOWTIE, BOWTIE_2, MRSFAST, MRSFAST_ULTRA, MANUAL
-                    : --Exec      Name of the executable file to be run for coarse mapping
-                                  Required for Stage 2, either full path (e.g. /home/bwa_folder/bwa) or executable name if installed (e.g. bwa)
-                    : -R          Read input mode, SINGLE or PAIRED [default PAIRED]
-                    : --MinI      [INT] for PAIRED mode, minimum read fragment insert length (|tLen| in SAM format) [default 150]
-                    : --MaxI      [INT] for PAIRED mode, maximum read fragment insert length (|tLen| in SAM format) [default 650]
-                    : -O          Output SAM file to print the final mapping output [default = CoRA_Output.sam]
-                    : -K          k-mer compression mode, HALF or FULL [HALF].
-                    : -L [INT]    Read length for CoRA mapping [no default]. 
-                                  Currently if -K is HALF, -L needs to be an even number. This restriction will be removed in the next update
-                    : --Metric    Distance metric to be used for mapping (HAMMING or EDIT) [default HAMMING]
-                                  HAMMING distance is substitution only. EDIT (Levenshtein) distance allows indels (currently only compatible with BWA and BOWTIE_2 coarse mappers)
-                    : -E [INT]    Hamming/Edit-distance threshold per k-mer for inexact homology table. (1 to 3) [default 2] 
-                                  Use of Hamming or Edit distance is determined by --Metric option.
-                                  In the current version this value should be the same as the one used to generated the homology table.
-                                  This restriction will be lifted in future updates.
+Important Options: 
 
-                    : --PrintR    Include the original read names in the final SAM output file. (0 or 1) [default 0]
-                    : --PrintQ    Include quality scores in the final SAM output file. (0 or 1) [default 0]
+    -C            Determines which stages of CORA pipeline will be executed. [default 1111]
+                  Other valid options are: 1000, 1100, 1110, 0100, 0110, 0111, 0010, 0011, 0001
+                  These indicate 4 flags for running following 4 stages: 
+                      1) Compressing reads into unique k-mers.
+                      2) Coarse mapping k-mers to the reference using an off-the-shelf aligner.
+                      3) Converting coarse mapping results to read links.
+                      4) Traverse homology index for generating final mappings.
+    --Mode        Mapping mode: ALL, BEST, BEST_SENSITIVE, BEST_FAST, STRATUM, or UNIQUE [ALL].
+    --Map         Off-the shelf mapper to be used for coarse mapping [default BWA]
+                  Can be BWA, BWA_MEM, BOWTIE, BOWTIE_2, MRSFAST, MRSFAST_ULTRA, MANUAL
+    --Exec        Name of the executable file to be run for coarse mapping
+                  Either full path (e.g. /home/folder/bwa) or executable if installed (e.g. bwa)
+    -R            Read input mode, SINGLE for single-end or PAIRED for paired-end reads [PAIRED]
+    --MinI        [INT] for PAIRED (paired-end) mode, min insert length (|TLEN| in SAM) [150]
+    --MaxI        [INT] for PAIRED (paired-end) mode, max insert length (|TLEN| in SAM) [650]
+    -O            Output SAM file to print the final mapping output [default = CORA_Output.sam]
+    -L            [INT] Read length for CORA mapping (per read end) [no default]. 
+    -K            K-mer compression mode, FULL, HALF or THREEWAY [default = HALF].
+                  FULL, HALF and THREEWAY denote 1, 2, or 3 k-mers per read-end, respectively.
+                  K-mer length in coraIndex stage should concordant with -K (see below): 
+                      FULL -> index k-mer should be same as read length
+                      HALF -> k-mer length should be floor(read_length/2)
+                      THREEWAY -> k-mer length should be floor(read_length/3)
+    --Metric      Distance metric to be used for mapping (HAMMING or EDIT) [default HAMMING]
+                      HAMMING -> distance is substitution only
+                      EDIT -> (Levenshtein) distance allows indels (requires --Map BWA or BOWTIE_2)
+    -E            [INT] Distance threshold per k-mer for inexact homology table. (1 to 3) [default 2] 
+                  Use of Hamming or Edit distance is determined by --Metric option.
+                  Should be the same as -H used in coraIndex stage. 
+Performance Options: 
 
-Performance Options : --memoi     [INT] Memoization (in stage 4) for number of k-mers appearing at least as many times as this value [default 20].
-                                  Must be larger than 1. Lower values save runtime during Stage 4 using more memory.
-                      --fs        [INT or STRING] Number of physical file splits for Input FASTQ file for compression (stage 1)
-                                  Valid parameters are either AUTO or an integer between 1 to 144 [default is AUTO] 
-                                  Higher values reduce memory use during Stage 1 sacrificing some run time. 
-                                  AUTO mode automatically determines the number of FASTQ splits as follows: 1 + genome_size / 10M (which corresponds to --fs 32 for human genome)
+    --memoi       [INT] Activate memoization for k-mers appearing at least as many times as INT [20].
+                  Must be larger than 1. Lower values save runtime during Stage 4 using more memory.
+    --fs          [INT or AUTO] Number of physical file splits for Input FASTQ file for compression
+                  Valid parameters are either AUTO or an integer between 1 to 144 [default is AUTO] 
+                  Higher values reduce memory use during Stage 1 sacrificing some run time. 
+                  AUTO mode determines the number of FASTQ splits as: 1 + genome_size / 10M.
 
-                      --cm        [STRING] Mode for Stage 1 determining whether the reference should be used for compressing reads or not.
-                                  Options: WITHREF or NOREF [default WITHREF]
+    --cm          [STRING] Determines if the reference should be used for compressing reads or not.
+                  Options: WITHREF or NOREF [default WITHREF]
 
-Paralelization Opt. : --coarseP   [INT] The number of parallel threads to be used for coarse mapping. Capped at maximum number of threads allowed by coarse-mapper [default is 1]
+Paralelization Options: 
 
-Misc. Options       : --TempDir   [STRING] The directory to be used for intermediate CORA files. [default __temporary_CORA_files].
-                                  This enables running two CORA jobs in the same folder as long as their temporary directories are different.
-                                  If you are running only part of the CORA pipeline (e.g. 0001 or 0111), make sure the intermediate files from previous
-                                  stages exist in the temporary directory.
+    --coarseP     [INT] The number of parallel threads to be used for coarse mapping. [default is 1]
+                  Capped at maximum number of threads allowed by coarse-mapper
 
-                    : --ReadComp  [STRING] Compression format of the input reads (GZIP or OFF) [default OFF]
-                                  OFF means that the input datasets are in plain FASTQ format
+Miscellaneous Options: 
 
-                    : --MaxMapCount [INT] Maximum number of mapping to print in ALL mapping mode [default is infinite]
+    --TempDir     [STRING] The directory to be used for temp CORA files. [__temporary_CORA_files].
+                  This enables running two CORA jobs in the same folder with different TempDir.
+    --ReadComp    [STRING] Compression format of the input reads (GZIP or OFF) [default OFF]
+                  OFF means that the input datasets are in plain FASTQ format
+
+    --MaxMapCount [INT] Maximum number of mapping to print in ALL mapping mode [default is infinite]
 

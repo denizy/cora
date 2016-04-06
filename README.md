@@ -7,11 +7,12 @@ Deniz Yorukoglu, Y. William Yu, Jian Peng, Bonnie Berger.
 
 http://cora.csail.mit.edu/
 
+
 -----------------------------
 
 Package contents:
 
-*	Source code for CORA framework (excluding coarse mapper to be plugged in, a mapper of choice should be downloaded separately for coarse mapping)
+*	Source code for CORA framework v1.1.2b (excluding coarse mapper to be plugged in, a mapper of choice should be downloaded separately for coarse mapping)
 *	Internal data files (.dat)
 *	Makefile
 *	Manual
