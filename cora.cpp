@@ -14,13 +14,16 @@
 #include<vector>
 using namespace std;
 
-#define VERSION "1.1.2b"
+#define VERSION "1.1.4b"
 
 #define HOMINDEX "coraIndex"
 #define MAPPERINDEX "mapperIndex"
 #define SEARCH "search"
 #define READFILEGEN "readFileGen"
 #define FAIGENERATE "faiGenerate"
+
+#define NUMCHROMFORSHORT 250 //If the number of chroms in the fai file exceeds this file then large chrom version will be called with "_L"
+int numChromInFai; //obtained from Fai file 
 
 double getTime()
 {
@@ -69,6 +72,7 @@ string splitMode = "HALF"; //FULL or HALF (This might be made more parametric la
 string collapseMode = "WITHREF"; //NOREF or WITHREF
 string readCompressionMode = "OFF"; //OFF or GZIP
 string temporaryDirectoryName = "__temporary_CORA_files";
+string inputReadGroupString = "";
 string killSignalFile = "__TEMP__Kill_Signal_File"; //This file is created if a subprogram is killing itself intentionally (for deallocation speed) so that the parent can ignore it
 string collapseFragmentFile = "__TEMP__Aux_Fastq_Splits_File"; //either NONE or a file containing list of fragment groups (AA_GT_, TA_, N_AG_AC_, etc.) -- This is for Fastq Splitting -- It is stuomatically converted to NONE if the number of splits is specified as less than two
 int numCoarseMappingThreads = 1;
@@ -229,6 +233,7 @@ int CheckFai_and_ReturnMaxChrSize(string faiFileName)
 
     //In MultiChr Version only MaxChrSize is needed
     string faiLine;
+    numChromInFai = 0;
     while(getline(finFai, faiLine))
     {
         stringstream faiLineSS(faiLine);
@@ -240,10 +245,19 @@ int CheckFai_and_ReturnMaxChrSize(string faiFileName)
         if(ctgSize > maxContigSizeInFai)
         {
             maxContigSizeInFai = ctgSize;
-        }   
+        }
+
+        numChromInFai++;   
     }
     finFai.close();
-    
+   
+    if(numChromInFai > 65530)
+    {
+        cout << "ERROR: Current verison of CORA only supports at most 65530 chromosomes within a reference file." << endl;
+        cout << "Let denizy@mit.edu know if a version that supports more chromosomes is needed." << endl;
+        exit(100);
+    }
+ 
     return maxContigSizeInFai;
 }
 
@@ -470,6 +484,13 @@ void ConfigureRelatedParameters(string coraExecPath)
     homTableSetupExec = execPathPrefix + homTableSetupExec;
     mappingInferenceExec = execPathPrefix + mappingInferenceExec;
     fastqSplitterExec = execPathPrefix + fastqSplitterExec;
+
+    if(numChromInFai > NUMCHROMFORSHORT)
+    {
+        homTableSetupExec += "_L"; //This is the homTableSetup version that supports larger chromosomes
+        mappingInferenceExec += "_L"; //This is the mappingInference version that supports larger chromosomes
+        collapseExec += "_L"; //This is the collapse version that supports larger chromosomes
+    }
 
     LPT2path = execPathPrefix + LPT2path;
     LPT4path = execPathPrefix + LPT4path;
@@ -844,6 +865,15 @@ void PrintSearchManual(string error)
     cout << "                  Capped at maximum number of threads allowed by coarse-mapper" << endl << endl;
 
     cout << "Miscellaneous Options: " << endl << endl;
+    
+    cout << "    --RG          [\"STRING\"] All read group data for the read datasets being mapped [default NONE]" << endl;
+    cout << "                  This string will appear in the header and IDs will be attached to each mapping line" << endl;
+    cout << "                  The whole string should be double quoted, the first identifier should be a unique ID" << endl;
+    cout << "                  Multiple read datasets's RG data should be comma-separated in the order of Read_File_List" << endl;
+    cout << "                  For tab-delimiting identifiers within the command line you can use Ctrl+V -> Ctrl+I" << endl; 
+    cout << "                  The following is an example --RG value for 3 single-end or paired-end read datasets" << endl;
+    cout << "                  \"ID:xx1\tCN:yya\tDS:za zb\tDT:ta,ID:xx2\tCN:yya,ID:xx3\tCN:yyb\tDS:zc zd\"" << endl << endl;
+
     cout << "    --TempDir     [STRING] The directory to be used for temp CORA files. [__temporary_CORA_files]." << endl;
     cout << "                  This enables running two CORA jobs in the same folder with different TempDir." << endl;
 
@@ -1433,6 +1463,11 @@ void ParseCommandLineArguments(int argc, char* argv[])
                     numCoarseMappingThreads = atoi(argv[i+1]);
                     if(numCoarseMappingThreads < 1)
                         PrintSearchManual("Valid options for --coarseP are positive integers");
+                    i+=2;
+                }
+                else if(argMark == "--RG")
+                {
+                    inputReadGroupString = string(argv[i+1]);
                     i+=2;
                 }
                 else if(argMark == "--TempDir")
@@ -2065,7 +2100,18 @@ int main(int argc, char* argv[])
             mapAllInferCall << "HAMMING ";
         }
     
-        mapAllInferCall << mappingReportMode << " " << fastqInputListFile << " " << globalMapCountLimit << " " << mappingOutputFile << " UNCOLLAPSED NULL NULL " << (int) idDigitLen << " " << splitMode << " " << inputMode << " ";
+        mapAllInferCall << mappingReportMode << " " << fastqInputListFile << " " << globalMapCountLimit << " " << mappingOutputFile << " UNCOLLAPSED";
+
+        if(inputReadGroupString != "")
+        {
+            mapAllInferCall << " \"" << inputReadGroupString << "\"";
+        }
+        else
+        {
+            mapAllInferCall << " NULL";
+        }
+        
+        mapAllInferCall << " NULL " << (int) idDigitLen << " " << splitMode << " " << inputMode << " ";
 
         if(inputMode == "PAIRED")
         {

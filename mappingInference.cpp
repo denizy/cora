@@ -39,8 +39,13 @@ using namespace std;
     #define MAX_NUM_HOM_EDITS 2
 #endif
 
+#ifdef CHR_SHORT
+    #define MAX_NUM_CHRS 65530 
+#else
+    #define MAX_NUM_CHRS 250 
+#endif
+
 #define MAX_LINE_LEN 200 
-#define MAX_NUM_CHRS 250 
 #define MAX_CHR_NAME_LEN 50
 #define MAX_READ_LEN 250
 #define MAX_RETURNED_LINKSLIST 5000
@@ -50,6 +55,7 @@ using namespace std;
 #define MAX_ID_DIGIT_LEN 10
 #define MAX_READ_FILE_NAME_LEN 250
 #define MAX_READ_NAME_LENGTH 50
+#define MAX_READ_GROUP_ID_LENGTH 250
 
 //alphabet properties for read name econding
 #define IDENTITY_ALPHABET_START 33
@@ -89,6 +95,7 @@ int distanceMetric = HAMMING;
 
 int mappingMode;
 int mappingQualityPrintFlag;
+int printReadGroupsFlag;
 
 char RevCompChar[256];
 
@@ -397,11 +404,18 @@ medit dummyMedit;
 struct link //A link contains the position in the reference it points to with the direction of homology as well as the edits (medit format)
 {
     link(){};
+#ifdef CHR_SHORT
+    link(unsigned int y, medit z, unsigned short x, bool t): chrPos(y), edit(z), chrCode(x), dir(t) {}
+#else
     link(unsigned int y, medit z, unsigned char x, bool t): chrPos(y), edit(z), chrCode(x), dir(t) {}
-
+#endif
     unsigned int chrPos;    
     medit edit;
+#ifdef CHR_SHORT
+    unsigned short chrCode;
+#else
     unsigned char chrCode;
+#endif
     char dir;
 
     bool operator() (const link& a, const link& b) //For sorting
@@ -421,15 +435,27 @@ struct mergedLink //A link contains the position in the reference it points to w
     {
         chrPos = myLink.chrPos; chrCode = myLink.chrCode; dir = myLink.dir; edit = doubleMedit(myLink.edit);
     }
+#ifdef CHR_SHORT
+    mergedLink(unsigned int y, medit z, unsigned short x, bool t)
+#else
     mergedLink(unsigned int y, medit z, unsigned char x, bool t)
+#endif
     {
         chrPos = y; chrCode = x; dir = t; edit = doubleMedit(z);
     }
+#ifdef CHR_SHORT
     mergedLink(unsigned int y, doubleMedit z, unsigned char x, bool t): chrPos(y), edit(z), chrCode(x), dir(t) {}
+#else
+    mergedLink(unsigned int y, doubleMedit z, unsigned short x, bool t): chrPos(y), edit(z), chrCode(x), dir(t) {}
+#endif
 
     unsigned int chrPos;
     doubleMedit edit;
+#ifdef CHR_SHORT
+    unsigned short chrCode;
+#else
     unsigned char chrCode;
+#endif
     char dir;
 
     bool operator() (const mergedLink& a, const mergedLink& b) //For sorting
@@ -452,7 +478,11 @@ struct emHomItem //multipleError homologies
     unsigned char offsetList[MAX_NUM_HOM_EDITS]; //list of offset positions that represent the substitutions in homology -- offsets are always in the forward direction of the source position
     unsigned int blockLen : 7; //How long the homology is continued as a block: e.g if blockLen is 3, then A ~ B, A+1 ~ B+1, A+2 ~ B+2 for forward homologies, A~B, A+1 ~ B-1, A+2 ~ B-2 for reverseComplement homologies
     unsigned int dir : 1; //direction of homology
+#ifdef CHR_SHORT
+    unsigned short chrCode;
+#else
     unsigned char chrCode; //chromosome of the target
+#endif
 };
 
 struct emHomClassNode //for each equiv class representative (described below), this stores the list of inexact homology links it has
@@ -460,7 +490,11 @@ struct emHomClassNode //for each equiv class representative (described below), t
     emHomItem* list; //list of inexact homologies for this position
     unsigned int chrPos; //pos in chr of source
     unsigned int listSize; //number of homologies for this pos
+#ifdef CHR_SHORT
+    unsigned short chrCode;
+#else
     unsigned char chrCode; //chr of source
+#endif
     unsigned char maxRevLookup; //max number indices to go back to find all emHoms relevant to this pos (this is required since, due to blockLengths > 1, previous positions might contain homologies relevant to this guy)
 };
 
@@ -475,7 +509,11 @@ struct eqItem
 {
     unsigned int chrPos; //position of the target
     char dir; //direction of homology
+#ifdef CHR_SHORT
+    unsigned short chrCode;
+#else
     unsigned char chrCode; //chromosome of the target
+#endif
 };
 
 //Equivalence class representative that contains exact homology links to the other members of the class
@@ -485,7 +523,11 @@ struct equivClassNode
     unsigned int blockLen; //length of block for the entire class (unlike inexact homologies for which the block length is per link), each region in the class has perfect homologie for the entire blockLength
     unsigned int chrPos; //position of class rep
     unsigned int listSize; //total number of non-rep members of the class
+#ifdef CHR_SHORT
+    unsigned short chrCode;
+#else
     unsigned char chrCode; //chromosome of the class rep
+#endif
 };
 
 equivClassNode* equivClassList; //1-based list of all equivalence class representatives with their exact homologies
@@ -538,9 +580,8 @@ void LoadInexactHomologies(char* inexactTableFileName, int readLen, int numHomTa
 
     for(unsigned int i=1; i<=emHomClassListSize; i++)
     {
-        size_t tempSize = fread(&(emHomClassList[i].chrCode), sizeof(unsigned char), 1, finBin);
-        
-        tempSize &= fread(&(emHomClassList[i].chrPos), sizeof(unsigned int), 1, finBin);
+        size_t tempSize = fread(&(emHomClassList[i].chrCode), sizeof(emHomClassNode::chrCode), 1, finBin);
+        tempSize &= fread(&(emHomClassList[i].chrPos), sizeof(emHomClassNode::chrPos), 1, finBin);
 
         bufferListSize = 0;
     
@@ -565,8 +606,8 @@ void LoadInexactHomologies(char* inexactTableFileName, int readLen, int numHomTa
 
             bufferList[bufferListSize].dir = curDir;
 
-            tempSize &= fread(&(bufferList[bufferListSize].chrCode), sizeof(unsigned char), 1, finBin);
-            tempSize &= fread(&(bufferList[bufferListSize].chrPos), sizeof(unsigned int), 1, finBin);
+            tempSize &= fread(&(bufferList[bufferListSize].chrCode), sizeof(emHomItem::chrCode), 1, finBin);
+            tempSize &= fread(&(bufferList[bufferListSize].chrPos), sizeof(emHomItem::chrPos), 1, finBin);
         
             for(unsigned char k=0; k<numHomTableMismatches; k++)
             {
@@ -597,7 +638,7 @@ void LoadInexactHomologies(char* inexactTableFileName, int readLen, int numHomTa
     unsigned int lookInd = 2;
     for(unsigned int i=1; i <= emHomClassListSize && lookInd <= emHomClassListSize; i++)
     {
-        unsigned char curChrCode = emHomClassList[i].chrCode;
+        unsigned int curChrCode = emHomClassList[i].chrCode;
         unsigned int curChrPos = emHomClassList[i].chrPos;
         unsigned int lookChrPosLimit = curChrPos + emHomClassList[i].list[0].blockLen - 1; //first item in the list always the longest
         
@@ -638,8 +679,8 @@ void LoadEquivClasses(char* perfTableFileName)
 
     for(unsigned int i=1; i<=equivClassListSize; i++)
     {
-        size_t tempSize = fread(&(equivClassList[i].chrCode), sizeof(unsigned char), 1, finBin);
-        tempSize &= fread(&(equivClassList[i].chrPos), sizeof(unsigned int), 1, finBin);
+        size_t tempSize = fread(&(equivClassList[i].chrCode), sizeof(equivClassNode::chrCode), 1, finBin);
+        tempSize &= fread(&(equivClassList[i].chrPos), sizeof(equivClassNode::chrPos), 1, finBin);
 
         bufferListSize = 0;
         while(true)
@@ -661,8 +702,8 @@ void LoadEquivClasses(char* perfTableFileName)
                 break;
             }
 
-            tempSize &= fread(&(bufferList[bufferListSize].chrCode), sizeof(unsigned char), 1, finBin);
-            tempSize &= fread(&(bufferList[bufferListSize].chrPos), sizeof(unsigned int), 1, finBin);
+            tempSize &= fread(&(bufferList[bufferListSize].chrCode), sizeof(eqItem::chrCode), 1, finBin);
+            tempSize &= fread(&(bufferList[bufferListSize].chrPos), sizeof(eqItem::chrPos), 1, finBin);
 
             bufferListSize++;
             if(bufferListSize > bufferListCap) //resize bufferList
@@ -1285,7 +1326,11 @@ struct memoInd
     int endInd; //inclusive ending location 
     unsigned int chrPos; //The same as chrCode, but the position in the chromosome
     medit edit;
+#ifdef CHR_SHORT
+    unsigned short chrCode; //This is for memoization marked links to get their chrCode from (since we don't know which readID will be processed first)
+#else
     unsigned char chrCode; //This is for memoization marked links to get their chrCode from (since we don't know which readID will be processed first)
+#endif
     unsigned char properReadLength; //length of the genome alignment after indels
 };
 
@@ -1294,7 +1339,11 @@ vector<memoInd> memoInds; //This keeps track of which positions in the memoArr b
 vector<link> memoArr; //This is the array that stores all the memoized info
 int MEMOIZATION_THRESHOLD;
 
-#define MEMO_CHR_CODE 250    //This the ChrCode flag that tells that the corresponding link is not onto the genome but onto a memoized block
+#ifdef CHR_SHORT
+    #define MEMO_CHR_CODE 65531    //This the ChrCode flag that tells that the corresponding link is not onto the genome but onto a memoized block
+#else
+    #define MEMO_CHR_CODE 251    //This the ChrCode flag that tells that the corresponding link is not onto the genome but onto a memoized block
+#endif
 
 //Loads links table form the unsorted input file (only load the needed batch)
 bool LoadLinksRepositoryFromUnsorted(char* linksFileName, unsigned long long numReads, short numTraversal)
@@ -1342,7 +1391,7 @@ bool LoadLinksRepositoryFromUnsorted(char* linksFileName, unsigned long long num
     ifstream finLinks(linksFileName);
 
     string linkNameCode, linkGenEdit; //links file contains the encoded read names of the link as well as the MD edit scripts
-    unsigned int linkChrPos, linkChrCode; //and chromosome and position that the link points towards in the refernece genome
+    long long linkChrPos, linkChrCode; //and chromosome and position that the link points towards in the refernece genome
 
     int nameMemoThresh = MEMOIZATION_THRESHOLD * idDigitLen; //Minimum length for name that will have results memoized 
 
@@ -1362,6 +1411,8 @@ bool LoadLinksRepositoryFromUnsorted(char* linksFileName, unsigned long long num
         stringstream linkLineSS(linkLine);
         
         linkLineSS >> linkNameCode >> linkChrCode >> linkChrPos >> linkGenEdit;
+
+        assert(linkChrCode > 0 && linkChrPos > 0);
 
         int nameLen = linkNameCode.length();
         
@@ -1454,7 +1505,7 @@ unsigned char travArrReadmerLength[8]; //This the total length of splits so that
 doubleMedit savedEquivRepEdit;
 
 //Get all relevant exact homologies
-void TraverseEquivClass(unsigned int readId, unsigned char repChrCode, unsigned int repChrPos, unsigned int curEqClassIndex, int equivBlockOffset, bool dirFromHitToRep, unsigned char arrNo)
+void TraverseEquivClass(unsigned int readId, unsigned int repChrCode, unsigned int repChrPos, unsigned int curEqClassIndex, int equivBlockOffset, bool dirFromHitToRep, unsigned char arrNo)
 {
     int properReadLen = travArrReadmerLength[arrNo]; //considering the indel liength modifications to the read
 
@@ -1745,14 +1796,14 @@ void TraverseEquivClass(unsigned int readId, unsigned char repChrCode, unsigned 
     }
 }
 
-unsigned int RetrieveOffsetAndDirInfo(unsigned char linkChrCode, unsigned int linkChrPos, short& equivBlockOffset, bool& dirFromHitToRep);
+unsigned int RetrieveOffsetAndDirInfo(unsigned int linkChrCode, unsigned int linkChrPos, short& equivBlockOffset, bool& dirFromHitToRep);
 
 //Get all relevant inexact homologies
 void TraverseInexactHomologyTable(unsigned int readId, unsigned char arrNo, unsigned int linkEquivClassIndex, unsigned short  linkEquivBlockOffset, bool directionFromLinkToEquivRep)
 {
     int properReadLen = travArrReadmerLength[arrNo];
 
-    unsigned char linkChrCode = links[readId].chrCode;
+    unsigned int linkChrCode = links[readId].chrCode;
     unsigned int linkChrPos = links[readId].chrPos;
     doubleMedit linkMeditOrig(links[readId].edit); //regardless of direction of readLink, the medit should be in forward direction
 
@@ -1768,7 +1819,7 @@ void TraverseInexactHomologyTable(unsigned int readId, unsigned char arrNo, unsi
         linkMeditOrig = savedEquivRepEdit; //This is in order the prevent the inconsistencies caused by missing edits from link-to-
     }
 
-    unsigned char chrOfLinkEquivRep;
+    unsigned int chrOfLinkEquivRep;
     unsigned int offsetPosOfTheLinkEquivRep;
     if(linkEquivClassIndex)
     {
@@ -1796,7 +1847,7 @@ void TraverseInexactHomologyTable(unsigned int readId, unsigned char arrNo, unsi
         }
     }
 
-    unsigned char reverseBackupLim = emHomClassList[curEmHomIndex].maxRevLookup;
+    unsigned int reverseBackupLim = emHomClassList[curEmHomIndex].maxRevLookup;
     for(unsigned int i=0; i<=reverseBackupLim; i++) //blockLength of inexactHom cannot be larger than readLen
     {
         emHomClassNode& curHomClass = emHomClassList[curEmHomIndex-i];
@@ -2682,7 +2733,7 @@ void ConstructMaps(unsigned int readId, unsigned char arrNo)
 
     unsigned int curEqClassIndex = RetrieveOffsetAndDirInfo(links[readId].chrCode, links[readId].chrPos, equivBlockOffset, dirFromHitToRep);
 
-    unsigned char repChrCode;
+    unsigned int repChrCode;
     unsigned int repChrPos;
     if(curEqClassIndex == 0)
     {
@@ -2716,7 +2767,7 @@ void ConstructMaps_OnlyExact(unsigned int readId, unsigned char arrNo)
 
     unsigned int curEqClassIndex = RetrieveOffsetAndDirInfo(links[readId].chrCode, links[readId].chrPos, equivBlockOffset, dirFromHitToRep);
 
-    unsigned char repChrCode;
+    unsigned int repChrCode;
     unsigned int repChrPos;
     if(curEqClassIndex == 0)
     {
@@ -3200,7 +3251,7 @@ bool IndelAlignment(doubleMedit& splayMD, char splay[], char* ref, bool compDir,
 //identifies the differences between a reference and a given sequence
 //splay with edits in the case that there is no alignment with mismatches
 //returns the modified starting chrPos for right bounded alignment
-bool CheckSplayError(doubleMedit& splayMD, char splay[], unsigned char refChrNo, unsigned int refChrPos, bool compDir, unsigned char errLimit, bool boundaryDirection, char& modChrPosOffset)  //0 means read is bounded on the left, 1 means ref is bounded on the right
+bool CheckSplayError(doubleMedit& splayMD, char splay[], unsigned int refChrNo, unsigned int refChrPos, bool compDir, unsigned char errLimit, bool boundaryDirection, char& modChrPosOffset)  //0 means read is bounded on the left, 1 means ref is bounded on the right
 {
     //For indels the reference alignment should be strict on one side (it could be the beginning or the ending), it could be relaxed on the other side
     //The bounded dynamic programming algorithm would start from that side.
@@ -3485,7 +3536,7 @@ bool SplayAndMergeMiddleKmer(char splay[], unsigned int refChrPos, mergedLink& l
     doubleMedit splayMD;
     splayMD.numEdits = 0;
     bool compDir = link1.dir;
-    unsigned char refChrNo = link1.chrCode;
+    unsigned int refChrNo = link1.chrCode;
 
     char* ref = fullRef[refChrNo] + refChrPos; 
 
@@ -4053,7 +4104,6 @@ void MergeSplitMapsThreeWay(unsigned char arrNo1, unsigned char arrNo2, unsigned
         posSplit2++;
     }
     
-    
     /*cout << "S--1  Sizes:\t" << travArr[arrNo1].size() << "\t" << travArr[arrNo2].size() << "\t" << travArr[arrNo3].size() << "\t" << travArr[mergedArrNo].size() << endl;
     arr=mergedArrNo;
     for(int i=0; i< travArr[arr].size(); i++)
@@ -4114,6 +4164,8 @@ ifstream finFastqRight;
 
 char** readFileListLeft;
 char** readFileListRight;
+char** readGroupIDList; //List of read group IDs for each dataset in the readFileList
+int curReadGroupIDIndex; //This points to the currentReadGroup
 
 unsigned long long * numReadsInFile;
 unsigned long long * lastReadCodeInFile; //The code for the last read in file
@@ -4124,7 +4176,7 @@ int curFastqNoRight = 0;
 
 bool isReadNameCharInvalid[256];
 
-void InitFastqsWithBuffer(ifstream& finRFL)
+void InitFastqsWithBuffer(ifstream& finRFL, bool readGroupsExistFlag)
 {
     //Read fastq inputs into buffer (single file or both mates depending on flags)
     isReadNameCharInvalid[' '] = 1;
@@ -4137,10 +4189,18 @@ void InitFastqsWithBuffer(ifstream& finRFL)
 
     readFileListLeft = (char **) malloc ((numFastqs + 2) * sizeof(char*));
     readFileListRight = (char **) malloc ((numFastqs + 2) * sizeof(char*));
+    if(readGroupsExistFlag)
+    {
+        readGroupIDList = (char **) malloc ((numFastqs + 2) * sizeof(char*));
+    }
     for(int i=0; i<numFastqs; i++)
     {
         readFileListLeft[i] = (char *) malloc ((MAX_READ_FILE_NAME_LEN+2) * sizeof(char));
         readFileListRight[i] = (char *) malloc ((MAX_READ_FILE_NAME_LEN+2) * sizeof(char));
+        if(readGroupsExistFlag)
+        {
+            readGroupIDList[i] = (char *) malloc ((MAX_READ_GROUP_ID_LENGTH+2) * sizeof(char));
+        }
     }
 
     numReadsInFile = (unsigned long long *) malloc ((numFastqs + 2) * sizeof(unsigned long long));
@@ -4413,7 +4473,7 @@ void PrintQualityScoreRightFromFastqBuffer(char *& out, bool dir, unsigned long 
 bool HandleOddReads(int oddReadLengthFlag, mergedLink& curItem, doubleMedit& curMedit, char* curReadSeqBuffer, char curReplacedQueryCharList[], unsigned long long printReadCode, int curDeletionOffset, int curInsertionOffset)
 {
     unsigned int curChrPos = curItem.chrPos;
-    short curChrCode = curItem.chrCode;
+    int curChrCode = curItem.chrCode;
     if(oddReadLengthFlag == 1)
     {
         //Fix medit properly for the oddLength read given the indelOffset
@@ -4606,11 +4666,15 @@ void PrintSingleSamFromLinks(FILE* fout, mergedLink& singleItem, unsigned long l
 
     //singleItem is not const, since the edit within can be modified by odd length reads, however single end TraverseLinks wouldn't resend it for printing so no problem with modifying it within this function
     SetCurrentReadNameFromFastqBuffer(printReadCode);
+    while(printReadCode > lastReadCodeInFile[curReadGroupIDIndex])
+    {
+        curReadGroupIDIndex++;
+    }
 
     short singleFlag = (short) singleItem.dir * 16; //64 and 128 come from being the first and second fragments
 
     unsigned int singleChrPos = singleItem.chrPos;
-    short singleChrCode = singleItem.chrCode;
+    int singleChrCode = singleItem.chrCode;
 
     //Handle and prep MAPQ (mapping quality)
     unsigned char singleMapQ = 255; //255 represents unspecified mapping quality
@@ -4789,7 +4853,22 @@ void PrintSingleSamFromLinks(FILE* fout, mergedLink& singleItem, unsigned long l
     str[0] = ':'; str++;
     str[0] = 'Z'; str++;
     str[0] = ':'; str++;
-    writeStr(str, singleMDstr, '\n');
+
+    if(printReadGroupsFlag)
+    {
+        writeStr(str, singleMDstr, '\t');
+        //Print read group string
+        str[0] = 'R'; str++;
+        str[0] = 'G'; str++;
+        str[0] = ':'; str++;
+        str[0] = 'Z'; str++;
+        str[0] = ':'; str++; 
+        writeStr(str, readGroupIDList[curReadGroupIDIndex], '\n'); //-1 since index is 0-based fastqNo is 1-based 
+    }
+    else
+    {
+        writeStr(str, singleMDstr, '\n');
+    }
 
     bufferOffset = str - printBuffer; //Get how far away current string-write pointer is from the beginning of the buffer
 
@@ -4809,12 +4888,16 @@ void PrintPairSamFromLinks(FILE* fout, mergedLink& leftItem, mergedLink& rightIt
     #endif
 
     SetCurrentReadNameFromFastqBuffer(printReadCode);
+    while(printReadCode > lastReadCodeInFile[curReadGroupIDIndex])
+    {
+        curReadGroupIDIndex++;
+    }
 
     short leftFlag = (short) leftItem.dir * 16 + (short) rightItem.dir * 32 + 64 + 1; //64 and 128 come from being the first and second fragments
     short rightFlag = (short) rightItem.dir * 16 + (short) leftItem.dir * 32 + 128 + 1;
 
-    short leftChrCode = leftItem.chrCode;
-    short rightChrCode = rightItem.chrCode;
+    int leftChrCode = leftItem.chrCode;
+    int rightChrCode = rightItem.chrCode;
     unsigned int leftChrPos = leftItem.chrPos;
     unsigned int rightChrPos = rightItem.chrPos;
 
@@ -5078,7 +5161,22 @@ void PrintPairSamFromLinks(FILE* fout, mergedLink& leftItem, mergedLink& rightIt
     str[0] = ':'; str++;
     str[0] = 'Z'; str++;
     str[0] = ':'; str++;
-    writeStr(str, leftMDstr, '\n');
+
+    if(printReadGroupsFlag)
+    {
+        writeStr(str, leftMDstr, '\t');
+        //Print read group string
+        str[0] = 'R'; str++;
+        str[0] = 'G'; str++;
+        str[0] = ':'; str++;
+        str[0] = 'Z'; str++;
+        str[0] = ':'; str++;
+        writeStr(str, readGroupIDList[curReadGroupIDIndex], '\n'); //-1 since index is 0-based fastqNo is 1-based 
+    }
+    else
+    {
+        writeStr(str, leftMDstr, '\n');
+    }
 
     // Everything until here was about the left mate
     //////////////////////////////////////////////
@@ -5201,7 +5299,23 @@ void PrintPairSamFromLinks(FILE* fout, mergedLink& leftItem, mergedLink& rightIt
     str[0] = ':'; str++;
     str[0] = 'Z'; str++;
     str[0] = ':'; str++;
-    writeStr(str, rightMDstr, '\n');
+
+    if(printReadGroupsFlag)
+    {
+        writeStr(str, rightMDstr, '\t');
+        //Print read group string
+        str[0] = 'R'; str++;
+        str[0] = 'G'; str++;
+        str[0] = ':'; str++;
+        str[0] = 'Z'; str++;
+        str[0] = ':'; str++; 
+        writeStr(str, readGroupIDList[curReadGroupIDIndex], '\n'); //-1 since index is 0-based fastqNo is 1-based 
+    }
+    else
+    {
+        writeStr(str, rightMDstr, '\n');
+    }
+
 
     bufferOffset = str - printBuffer; //Get how far away current string-write pointer is from the beginning of the buffer
 
@@ -6096,7 +6210,7 @@ void TraverseLinks(unsigned int numReads, unsigned int minFragmentSize, unsigned
                 {
                     existCount++;
                 }
-            
+
                 if(existCount >= 3)
                 {
                     travArr[0].clear();
@@ -6108,6 +6222,7 @@ void TraverseLinks(unsigned int numReads, unsigned int minFragmentSize, unsigned
                     if(links[i].chrCode != MEMO_CHR_CODE)
                     {
                         travArrReadmerLength[0] = readLen + GetIndelLengthModifier(links[i].edit);
+
                         genericConstructMaps(i, 0); //Construct as regular
                     }   
                     else
@@ -6500,11 +6615,11 @@ unsigned long long GetReadIdFromStringWithPos(const string& str, unsigned int po
 //Obtains equivClass index from posHub, and also determines the proper offset and direction from hit to rep
 //Retrieve offset is guaranteed to return correct results since the direction and position is always stored within the list
 //BlockOffset is always positive (that's why dir is required as well)
-unsigned int RetrieveOffsetAndDirInfo(unsigned char linkChrCode, unsigned int linkChrPos, short& equivBlockOffset, bool& dirFromHitToRep)
+unsigned int RetrieveOffsetAndDirInfo(unsigned int linkChrCode, unsigned int linkChrPos, short& equivBlockOffset, bool& dirFromHitToRep)
 {
     unsigned int curEquivIndex = 0;
-    std::tr1::unordered_map<unsigned int, unsigned int>::iterator ite = equivHub[(short)linkChrCode].find(linkChrPos);
-    if(ite != equivHub[(short)linkChrCode].end())
+    std::tr1::unordered_map<unsigned int, unsigned int>::iterator ite = equivHub[linkChrCode].find(linkChrPos);
+    if(ite != equivHub[linkChrCode].end())
     {
         curEquivIndex = ite->second;
     }
@@ -6558,6 +6673,77 @@ unsigned int RetrieveOffsetAndDirInfo(unsigned char linkChrCode, unsigned int li
     assert(0);
 }
 
+void PrintSamHeader(FILE* fout, string readGroupString)
+{
+    string headerLine = "@SQ\tSN:";
+    char chrLenStr[50];   
+
+    for(int i=1; i<=numChrs; i++)
+    {
+        itoa10(chrLens[i], chrLenStr);
+        string curLine = headerLine + string(chrNames[i]) + "\tLN:" + chrLenStr + "\n";
+        fprintf(fout,"%s",curLine.c_str()); 
+    }
+
+    if(readGroupString != "NULL")
+    {
+        //Split string into comma-separated groups, save IDs, print the group as a whole
+        printReadGroupsFlag = 1;       
+
+        int numReadGroupsRead = 0;
+ 
+        do {
+            if(numReadGroupsRead >= numFastqs)
+            {
+                cout << "ERROR: The number of comma-delimited read group strings(" << numReadGroupsRead+1 << ") is different than the number of read datasets(" << numFastqs << ") in ReadFileList" << endl;
+                exit(66); 
+            }
+
+            int commaPos = readGroupString.find(",");
+
+            if(commaPos == string::npos)
+                commaPos = readGroupString.length();
+
+            string toPrintStr = readGroupString.substr(0,commaPos);
+            
+            fprintf(fout,"@RG\t%s\n",toPrintStr.c_str());
+
+            stringstream toPrintStrSS(toPrintStr);
+            string idStr;
+            toPrintStrSS >> idStr;
+
+            assert(idStr.substr(0,3) == "ID:" && idStr.length() > 3);
+            
+            //Save IDs in a list to print per line
+            unsigned int idIndex=0;
+            for(idIndex=0; idIndex+3<idStr.length(); idIndex++)
+            {
+                readGroupIDList[numReadGroupsRead][idIndex] = idStr[idIndex+3];    
+            }
+            readGroupIDList[numReadGroupsRead][idIndex] = '\0';
+            numReadGroupsRead++;
+
+            //Cut the readGroupString for the next read dataset
+            if(commaPos != readGroupString.length())
+            {
+                readGroupString = readGroupString.substr(commaPos+1, readGroupString.length()-commaPos);
+            }
+            else
+            {
+                readGroupString = "";
+            }            
+        } while(readGroupString.length() > 0);
+
+        if(numReadGroupsRead != numFastqs)
+        {
+            cout << "ERROR: The number of comma-delimited read group strings(" << numReadGroupsRead << ") is different than the number of read datasets(" << numFastqs << ") in ReadFileList" << endl;
+            exit(66); 
+        }
+    }
+
+    cout << "Printed SAM header..." << endl;
+}
+
 int main(int argc, char* argv[])
 {
     double beginTime = getTime();
@@ -6576,7 +6762,7 @@ int main(int argc, char* argv[])
         cout << "ARGV[10] Maximum printed mappings (Only used for ALL mapping)" << endl;
         cout << "ARGV[11] output file that represents all mappings with reads (not in SAM format yet)" << endl;
         cout << "ARGV[12] sam output type: COLLAPSED | UNCOLLAPSED" << endl;
-        cout << "ARGV[13] UNUSED" << endl;
+        cout << "ARGV[13] Double quoted read group string (or NULL if not passed)" << endl;
         cout << "ARGV[14] UNUSED" << endl;
         cout << "ARGV[15] readIdentityDigitLength" << endl;
         cout << "ARGV[16] splitMode" << endl; //curently HALF or NONE=FULL or THREEWAY
@@ -6722,7 +6908,8 @@ int main(int argc, char* argv[])
     //Force fastq reading (since we now SplaySplit and LoadNoHit directly from fastqReadSeqBuffers)
     ifstream finRFL(argv[9]); //readFileList
     assert(finRFL.is_open());
-    InitFastqsWithBuffer(finRFL);
+        
+    InitFastqsWithBuffer(finRFL, string(argv[13]) != "NULL");
     LoadFastqBuffer();
     
     //Load all needed files
@@ -6735,6 +6922,10 @@ int main(int argc, char* argv[])
     bool allLinksTraversedFLAG = 0;
     unsigned short numTraversal = 0;
 
+    FILE* fout = fopen(argv[11], "wb");
+    setvbuf(fout, NULL, _IOFBF, 4096);
+    PrintSamHeader(fout, string(argv[13])); //Print @SQ and optionally @RG lines in the SAM header
+
     while(allLinksTraversedFLAG == 0)
     {
         allLinksTraversedFLAG = LoadLinksRepositoryFromUnsorted(argv[6], numTotalReads, numTraversal);
@@ -6742,9 +6933,6 @@ int main(int argc, char* argv[])
         double postLoadTime = getTime();
 
         cout << "Loading links finished after " << postLoadTime - refHomTime << " seconds..." << endl;
-
-        FILE* fout = fopen(argv[11], "wb");
-        setvbuf(fout, NULL, _IOFBF, 4096);
 
         //all - best_fast - best - best_sensitive - unique - stratum (constructMaps and matchMates functions differ, so assign them as funcPtrs)
         void (*constructMapsFuncPtr)(unsigned int, unsigned char);
@@ -6794,6 +6982,8 @@ int main(int argc, char* argv[])
 
         numTraversal = 0;
     }
+
+    fclose(fout);
 
     //cout << "MemoIndsSize: " << memoInds.size() << endl;
     //cout << "MemoArrSize: " << memoArr.size() << endl;

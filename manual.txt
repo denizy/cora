@@ -1,5 +1,5 @@
 ====================================================================================================
-=======   CORA v1.1.2b by Deniz Yorukoglu (denizy@mit.edu, http://cora.csail.mit.edu/)      ========
+=======   CORA v1.1.4b by Deniz Yorukoglu (denizy@mit.edu, http://cora.csail.mit.edu/)      ========
 ====================================================================================================
 
 Usage: cora <command> [options]
@@ -134,6 +134,14 @@ Paralelization Options:
                   Capped at maximum number of threads allowed by coarse-mapper
 
 Miscellaneous Options: 
+
+    --RG          ["STRING"] All read group data for the read datasets being mapped [default NONE]
+                  This string will appear in the header and IDs will be attached to each mapping line
+                  The whole string should be double quoted, the first identifier should be a unique ID
+                  Multiple read datasets's RG data should be comma-separated in the order of Read_File_List
+                  For tab-delimiting identifiers within the command line you can use Ctrl+V -> Ctrl+I
+                  The following is an example --RG value for 3 single-end or paired-end read datasets
+                  "ID:xx1	CN:yya	DS:za zb	DT:ta,ID:xx2	CN:yya,ID:xx3	CN:yyb	DS:zc zd"
 
     --TempDir     [STRING] The directory to be used for temp CORA files. [__temporary_CORA_files].
                   This enables running two CORA jobs in the same folder with different TempDir.

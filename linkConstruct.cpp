@@ -11,12 +11,10 @@
 #include<stdio.h>
 using namespace std;
 
-const int FA_LINE_LEN = 50;
 const int MAX_NUM_LONG_READ_NAMES = 2000000;
 int curLongReadNameArrLen = MAX_NUM_LONG_READ_NAMES;
 const int MAX_READ_NAME_LENGTH = 5000000;
 int curReadNameArrLen = MAX_READ_NAME_LENGTH;
-const int MAX_NUM_CHRS = 250;
 
 #define IDENTITY_ALPHABET_START 33
 #define IDENTITY_ALPHABET_END   126
@@ -33,7 +31,7 @@ int repMapMode;
 #define MANUAL_MODE 301
 
 #define MAX_LINE_LEN 200
-#define MAX_NUM_CHRS 250
+#define MAX_NUM_CHRS 65530
 #define MAX_CHR_NAME_LEN 50
 
 #define MAX_NUM_EDITS 2
@@ -105,8 +103,6 @@ void InitRef(string refName, string refFaiName, int refLineLen)
 
     while(getline(finFai, faiLine))
     {
-        cout << "faiLine: " << faiLine << endl;
-
         stringstream faiLineSS(faiLine);
         string ctgName;
         int ctgSize;

@@ -12,7 +12,6 @@
 #include<time.h>
 #include<sys/time.h>
 #include<tr1/unordered_map>
-#include<string.h> //[TODO] see if any library below this is used
 #include<iomanip>  
 #include<bitset>
 #include<unistd.h>
@@ -21,7 +20,12 @@
 #include<sys/stat.h>
 using namespace std;
 
-#define MAX_NUM_CHR 250 //[TODO] Increase the size of this to 65536
+#ifdef CHR_SHORT
+    #define MAX_NUM_CHR 65530
+#else
+    #define MAX_NUM_CHR 250
+#endif
+
 #define MAX_LINE_LEN 250 //[TODO] Increase the size of this to 65536
 #define MAX_READ_LEN 250
 
@@ -198,10 +202,17 @@ void ConfigureRelatedParameters(const string& refFile)
 }
 
 //###### HOM TABLE EXACT COLLAPSING #######//
+
 struct eqItem
 {
     char dir; //dir = 0 from representative, for other items, it is the direction to the repesentative
+
+#ifdef CHR_SHORT
+    short chrCode; //chromosome id
+#else
     char chrCode; //chromosome id
+#endif
+
     unsigned int chrPos; //chromosome position
 };
 
@@ -213,7 +224,7 @@ struct eqClass //each class has a representative (the first item eqList[0] and t
 
 void DebugPrintEqItem(eqItem x)
 {
-    cout << "EqItem: chrCode: " << x.chrCode << "  chrPos: " << x.chrPos << "  dir: " << x.dir << endl;
+    cout << "EqItem: chrCode: " << (int) x.chrCode << "  chrPos: " << x.chrPos << "  dir: " << (int) x.dir << endl;
 }
 
 bool sort_eqClass_by_representative(eqClass e1, eqClass e2)
@@ -339,7 +350,7 @@ void FillInEquivClasses(const string& eqInputFile, vector<eqClass>& equivSet)
     maxEquivNoSoFar = 0;
     prevEquivClassNo = 0; 
     long long prevChrPos = 0;
-    char curChrCode = -1;
+    int curChrCode = -1;
 
     //Scan and place in lists (load everything in a single scan)
     while(getline(finEq,eqLine))
@@ -590,16 +601,16 @@ long long PrintBinaryEquivData(FILE* foutBinEquiv, int readLen, vector<eqClass>&
         
         assert(curArr[0].chrCode != 0);
 
-        fwrite(&(curArr[0].chrCode), sizeof(char), 1, foutBinEquiv);
-        fwrite(&(curArr[0].chrPos), sizeof(unsigned int), 1, foutBinEquiv);
+        fwrite(&(curArr[0].chrCode), sizeof(eqItem::chrCode), 1, foutBinEquiv);
+        fwrite(&(curArr[0].chrPos), sizeof(eqItem::chrPos), 1, foutBinEquiv);
 
         for(int k=1; k<curArrSize; k++) //The boundaries of this for-loop is intentional (due to the way the representative is stored similary to other items but not printed)
         {
-            fwrite(&(curArr[k].dir), sizeof(char), 1, foutBinEquiv);
+            fwrite(&(curArr[k].dir), sizeof(eqItem::dir), 1, foutBinEquiv);
 
             assert(curArr[k].chrCode != 0);
-            fwrite(&(curArr[k].chrCode), sizeof(char), 1, foutBinEquiv);
-            fwrite(&(curArr[k].chrPos), sizeof(unsigned int), 1, foutBinEquiv);
+            fwrite(&(curArr[k].chrCode), sizeof(eqItem::chrCode), 1, foutBinEquiv);
+            fwrite(&(curArr[k].chrPos), sizeof(eqItem::chrPos), 1, foutBinEquiv);
         }
 
         char termin = -1;
@@ -668,8 +679,14 @@ ofstream foutDebugInexact; //This is only used if we need to debug print the ine
 //This stores one instance of inexact homology between two read-mers in the reference
 struct homPair
 {
+#ifdef CHR_SHORT
+    short chrCode1;
+    short chrCode2;
+#else
     char chrCode1;
     char chrCode2;
+#endif
+
     unsigned int chrPos1;
     unsigned int chrPos2;
     char dir; //direction of homology
@@ -688,7 +705,11 @@ void DebugPrintHomPair(homPair x)
 struct homMapItem
 {
     char dir;   
+#ifdef CHR_SHORT
+    short chrCode;
+#else
     char chrCode;
+#endif
     int chrPos;
     char offset1;
     char offset2;
@@ -1274,33 +1295,32 @@ unsigned int PrintBinaryHomMapData_SplitAware_ContigIntervalAware(FILE* foutBinM
                     {
                         if(noHeaderYetFLAG)
                         {
-                            fwrite(&i, sizeof(char), 1, foutBinMap);
-                            fwrite(&k, sizeof(unsigned int), 1, foutBinMap);            
+                            fwrite(&i, sizeof(homMapItem::chrCode), 1, foutBinMap);
+                            fwrite(&k, sizeof(homMapItem::chrPos), 1, foutBinMap);            
                         
                             if(DEBUG_SWITCH_FOR_INEXACT_PRINT)
                             {
-                                foutDebugInexact << "HEADER: " << i << " " << k << endl; 
+                                foutDebugInexact << "HEADER: " << (int) i << " " << k << endl; 
                             }
     
                             noHeaderYetFLAG = 0;
                         }
-                        fwrite(&((*curVec)[p].dir), sizeof(char), 1, foutBinMap);
-                        fwrite(&((*curVec)[p].chrCode), sizeof(char), 1, foutBinMap);               
+                        fwrite(&((*curVec)[p].dir), sizeof(homMapItem::dir), 1, foutBinMap);
+                        fwrite(&((*curVec)[p].chrCode), sizeof(homMapItem::chrCode), 1, foutBinMap);               
                         
                         assert((*curVec)[p].chrCode != 0);
 
-                        fwrite(&((*curVec)[p].chrPos), sizeof(unsigned int), 1, foutBinMap);
-                        fwrite(&((*curVec)[p].offset1), sizeof(char), 1, foutBinMap);               
+                        fwrite(&((*curVec)[p].chrPos), sizeof(homMapItem::chrPos), 1, foutBinMap);
+                        fwrite(&((*curVec)[p].offset1), sizeof(homMapItem::offset1), 1, foutBinMap);               
                         if(numMismatches > 1)
                         {
-                            fwrite(&((*curVec)[p].offset2), sizeof(char), 1, foutBinMap);               
+                            fwrite(&((*curVec)[p].offset2), sizeof(homMapItem::offset2), 1, foutBinMap);               
                         }
                         if(numMismatches > 2)
                         {
-                            fwrite(&((*curVec)[p].offset3), sizeof(char), 1, foutBinMap);               
+                            fwrite(&((*curVec)[p].offset3), sizeof(homMapItem::offset3), 1, foutBinMap);               
                         }
-                        fwrite(&((*curVec)[p].blockLen), sizeof(short), 1, foutBinMap);             
-                
+                        fwrite(&((*curVec)[p].blockLen), sizeof(homMapItem::blockLen), 1, foutBinMap);             
 
                         if(DEBUG_SWITCH_FOR_INEXACT_PRINT)
                         {
@@ -1355,8 +1375,8 @@ unsigned int PrintBinaryHomMapData_SplitAware(FILE* foutBinMap, int splitChrStar
                     {
                         if(noHeaderYetFLAG)
                         {
-                            fwrite(&i, sizeof(char), 1, foutBinMap);
-                            fwrite(&k, sizeof(unsigned int), 1, foutBinMap);            
+                            fwrite(&i, sizeof(homMapItem::chrCode), 1, foutBinMap);
+                            fwrite(&k, sizeof(homMapItem::chrPos), 1, foutBinMap);            
                         
                             if(DEBUG_SWITCH_FOR_INEXACT_PRINT)
                             {
@@ -1365,24 +1385,23 @@ unsigned int PrintBinaryHomMapData_SplitAware(FILE* foutBinMap, int splitChrStar
     
                             noHeaderYetFLAG = 0;
                         }
-                        fwrite(&((*curVec)[p].dir), sizeof(char), 1, foutBinMap);
-                        fwrite(&((*curVec)[p].chrCode), sizeof(char), 1, foutBinMap);               
+                        fwrite(&((*curVec)[p].dir), sizeof(homMapItem::dir), 1, foutBinMap);
+                        fwrite(&((*curVec)[p].chrCode), sizeof(homMapItem::chrCode), 1, foutBinMap);               
                         
                         assert((*curVec)[p].chrCode != 0);
 
-                        fwrite(&((*curVec)[p].chrPos), sizeof(unsigned int), 1, foutBinMap);
-                        fwrite(&((*curVec)[p].offset1), sizeof(char), 1, foutBinMap);               
+                        fwrite(&((*curVec)[p].chrPos), sizeof(homMapItem::chrPos), 1, foutBinMap);
+                        fwrite(&((*curVec)[p].offset1), sizeof(homMapItem::offset1), 1, foutBinMap);               
                         if(numMismatches > 1)
                         {
-                            fwrite(&((*curVec)[p].offset2), sizeof(char), 1, foutBinMap);               
+                            fwrite(&((*curVec)[p].offset2), sizeof(homMapItem::offset2), 1, foutBinMap);               
                         }
                         if(numMismatches > 2)
                         {
-                            fwrite(&((*curVec)[p].offset3), sizeof(char), 1, foutBinMap);               
+                            fwrite(&((*curVec)[p].offset3), sizeof(homMapItem::offset3), 1, foutBinMap);               
                         }
-                        fwrite(&((*curVec)[p].blockLen), sizeof(short), 1, foutBinMap);             
-                
-
+                        fwrite(&((*curVec)[p].blockLen), sizeof(homMapItem::blockLen), 1, foutBinMap);             
+               
                         if(DEBUG_SWITCH_FOR_INEXACT_PRINT)
                         {
                             foutDebugInexact << (int) (*curVec)[p].dir << "\t" << (int) (*curVec)[p].chrCode << "\t" << (*curVec)[p].chrPos << "\t" << (int) (*curVec)[p].offset1;
@@ -1982,7 +2001,11 @@ int IsLexiSmall_NLongs(const nLongs& first, const nLongs& second)
 
 struct MapSegment
 {
+#ifdef CHR_SHORT
+    short chrCode; //chromosome ID
+#else
     char chrCode; //chromosome ID
+#endif
     int chrPos; //regardless of the direction of which segment of the read-mer, chrPos shows the first base of the forward strand full read-mer
     bool dir; //direction of the segment w.r.t forward ref
     MapSegment* next; //next segment in the same bin
@@ -2820,6 +2843,10 @@ int main(int argc, char* argv[])
         }
 
         int numInexactCompactSplits = numChrs;
+        if(numChrs > 250)
+        {
+            numInexactCompactSplits = 250; //In cases where there are too many small chromosomes, cap the number of splits
+        }
 
         // This is the maximum contiguous sequence to compact at a given time for memory handling (sub-chromosomal split)
         int maxContigLen = 0; //0 means there is no minimum contig len      

@@ -59,9 +59,20 @@ inline double getTime() //This is the function that gets timestamps
 
 char idDigitLen; //This stores how many characters each read identity will contain
 
+#ifdef CHR_SHORT
+    #define INVALIDCHRCODE 65531 /// this is what's assigned when the k-mer doesn't exist in the reference
+#else
+    #define INVALIDCHRCODE 251
+#endif
+
 struct hashItem //A hash item contains locus information + linked list of samples and counts having the read 
 {
-    char refCode;
+#ifdef CHR_SHORT
+    unsigned short refCode;
+#else
+    unsigned char refCode;
+#endif 
+
     unsigned int refPos;
     char refDir; //This is to store which direction the reference readmer is stored
 
@@ -316,8 +327,7 @@ inline void AssignGlobalLRN() //This assigns global LRN while making sure that l
 
 char dummyQualString[256]; //Stores "S" for the entire quality string, used since of Bowtie2 can process fasta files, so a fastq file with dummy quality strings is printed for coarse mapping
 
-//TODO(denizy) Increase this to allow for larger number of chromosomes for mapping
-#define MAX_NUM_CHRS 256 //Limit for number of chromosomes in the input -- If longer is needed convert hashItems character refID's to short refID's
+#define MAX_NUM_CHRS 65530 //Limit for number of chromosomes in the input -- If longer is needed convert hashItems character refID's to short refID's
 
 char* fullRef[MAX_NUM_CHRS+2]; //char array array storing the reference bases (not compact -- 1 byte per base) -- Positions are 1-based ( fullRef[0] is empty )
 unsigned int chrLens[MAX_NUM_CHRS+2]; //Each chromosome's length in fullRef
@@ -938,7 +948,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0) //If the reference doesn't have this read-mer
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1008,7 +1018,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1074,7 +1084,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1144,7 +1154,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1213,7 +1223,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1278,7 +1288,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1344,7 +1354,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1411,7 +1421,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1475,7 +1485,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1543,7 +1553,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1612,7 +1622,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1677,7 +1687,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1756,7 +1766,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1829,7 +1839,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1896,7 +1906,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -1964,7 +1974,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -2033,7 +2043,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -2098,7 +2108,7 @@ int main(int argc, char* argv[])
                         if((*ptr) == 0)
                         {
                             *(ptr) = new hashItem();
-                            (*ptr)->refCode = -1;
+                            (*ptr)->refCode = INVALIDCHRCODE;
                             (*ptr)->refPos = -1;
                             (*ptr)->refDir = -1;
                             (*ptr)->ident = NULL;
@@ -2227,7 +2237,7 @@ int main(int argc, char* argv[])
             if((*ptr) == 0)
             {
                 *(ptr) = new hashItem();
-                (*ptr)->refCode = -1;
+                (*ptr)->refCode = INVALIDCHRCODE;
                 (*ptr)->refPos = -1;
                 (*ptr)->refDir = -1;
                 (*ptr)->ident = NULL;
@@ -2304,7 +2314,7 @@ int main(int argc, char* argv[])
         }
 
         int readNameLength = idDigitLen * curIdentCount;
-        if((it->second)->refCode == -1)
+        if((it->second)->refCode == INVALIDCHRCODE)
         {
             if(repMapMode == GENERIC_MODE)
             {
