@@ -1,5 +1,5 @@
 ====================================================================================================
-=======   CORA v1.1.4b by Deniz Yorukoglu (denizy@mit.edu, http://cora.csail.mit.edu/)      ========
+=======   CORA v1.1.5b by Deniz Yorukoglu (denizy@mit.edu, http://cora.csail.mit.edu/)      ========
 ====================================================================================================
 
 Usage: cora <command> [options]

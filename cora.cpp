@@ -14,7 +14,7 @@
 #include<vector>
 using namespace std;
 
-#define VERSION "1.1.4b"
+#define VERSION "1.1.5b"
 
 #define HOMINDEX "coraIndex"
 #define MAPPERINDEX "mapperIndex"
@@ -22,7 +22,7 @@ using namespace std;
 #define READFILEGEN "readFileGen"
 #define FAIGENERATE "faiGenerate"
 
-#define NUMCHROMFORSHORT 250 //If the number of chroms in the fai file exceeds this file then large chrom version will be called with "_L"
+#define NUMCHROMFORSHORT 127 //If the number of chroms in the fai file exceeds this file then large chrom version will be called with "_L"
 int numChromInFai; //obtained from Fai file 
 
 double getTime()
@@ -251,9 +251,9 @@ int CheckFai_and_ReturnMaxChrSize(string faiFileName)
     }
     finFai.close();
    
-    if(numChromInFai > 65530)
+    if(numChromInFai > 32000)
     {
-        cout << "ERROR: Current verison of CORA only supports at most 65530 chromosomes within a reference file." << endl;
+        cout << "ERROR: Current verison of CORA only supports at most 32000 chromosomes within a reference file." << endl;
         cout << "Let denizy@mit.edu know if a version that supports more chromosomes is needed." << endl;
         exit(100);
     }

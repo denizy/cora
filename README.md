@@ -13,7 +13,7 @@ http://cora.csail.mit.edu/
 
 Package contents:
 
-*	Source code for CORA framework v1.1.4b (excluding coarse mapper to be plugged in, a mapper of choice should be downloaded separately for coarse mapping)
+*	Source code for CORA framework v1.1.5b (excluding coarse mapper to be plugged in, a mapper of choice should be downloaded separately for coarse mapping)
 *	Internal data files (.dat)
 *	Makefile
 *	Manual

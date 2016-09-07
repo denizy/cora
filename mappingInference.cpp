@@ -444,9 +444,9 @@ struct mergedLink //A link contains the position in the reference it points to w
         chrPos = y; chrCode = x; dir = t; edit = doubleMedit(z);
     }
 #ifdef CHR_SHORT
-    mergedLink(unsigned int y, doubleMedit z, unsigned char x, bool t): chrPos(y), edit(z), chrCode(x), dir(t) {}
-#else
     mergedLink(unsigned int y, doubleMedit z, unsigned short x, bool t): chrPos(y), edit(z), chrCode(x), dir(t) {}
+#else
+    mergedLink(unsigned int y, doubleMedit z, unsigned char x, bool t): chrPos(y), edit(z), chrCode(x), dir(t) {}
 #endif
 
     unsigned int chrPos;
